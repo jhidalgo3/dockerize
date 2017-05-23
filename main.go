@@ -21,6 +21,7 @@ type sliceVar []string
 type hostFlagsVar []string
 
 type Context struct {
+	Values map[string]interface{}
 }
 
 type HttpHeader struct {
@@ -28,8 +29,8 @@ type HttpHeader struct {
 	value string
 }
 
-func (c *Context) Env() map[string]string {
-	env := make(map[string]string)
+func (c *Context) Env() map[string]interface{} {
+	env := make(map[string]interface{})
 	for _, i := range os.Environ() {
 		sep := strings.Index(i, "=")
 		env[i[0:sep]] = i[sep+1:]
@@ -48,6 +49,7 @@ var (
 	stdoutTailFlag    sliceVar
 	stderrTailFlag    sliceVar
 	headersFlag       sliceVar
+	valuesFlag        sliceVar
 	delimsFlag        string
 	delims            []string
 	headers           []HttpHeader
@@ -59,6 +61,8 @@ var (
 
 	ctx    context.Context
 	cancel context.CancelFunc
+
+	work Context
 )
 
 func (i *hostFlagsVar) String() string {
@@ -198,6 +202,7 @@ func main() {
 	flag.Var(&waitFlag, "wait", "Host (tcp/tcp4/tcp6/http/https/unix) to wait for before this container starts. Can be passed multiple times. e.g. tcp://db:5432")
 	flag.DurationVar(&waitTimeoutFlag, "timeout", 10*time.Second, "Host wait timeout")
 	flag.DurationVar(&waitRetryInterval, "wait-retry-interval", defaultWaitRetryInterval, "Duration to wait before retrying")
+	flag.Var(&valuesFlag, "values", ` Values to template `)
 
 	flag.Usage = usage
 	flag.Parse()
@@ -245,6 +250,14 @@ func main() {
 		}
 
 	}
+
+	var files []string
+	for _, t := range valuesFlag {
+
+		files = append(files, t)
+	}
+	work = Context{}
+	work.Values, _ = loadValues(files)
 
 	for _, t := range templatesFlag {
 		template, dest := t, ""

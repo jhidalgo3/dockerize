@@ -12,6 +12,7 @@ import (
 	"syscall"
 	"text/template"
 
+	"github.com/imdario/mergo"
 	"github.com/jwilder/gojq"
 )
 
@@ -124,7 +125,11 @@ func generateFile(templatePath, destPath string) bool {
 		defer dest.Close()
 	}
 
-	err = tmpl.ExecuteTemplate(dest, filepath.Base(templatePath), &Context{})
+	if err := mergo.Merge(&work.Values, work.Env()); err != nil {
+		log.Fatalf("template error: %s\n", err)
+	}
+
+	err = tmpl.ExecuteTemplate(dest, filepath.Base(templatePath), &work.Values)
 	if err != nil {
 		log.Fatalf("template error: %s\n", err)
 	}
